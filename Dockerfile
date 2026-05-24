@@ -50,6 +50,9 @@ wget -qO musescore.appimage ${MUSESCORE_DL_LINK}
 
 # make executable and run the AppImage to extract it, placing contents in /opt/squashfs-root
 chmod +x musescore.appimage
+#EOF
+#RUN <<EOF
+#set -e
 ./musescore.appimage --appimage-extract
 
 # clean up unnecessary leftovers
@@ -58,6 +61,7 @@ rm musescore.appimage
 EOF
 
 # Add install directory to path
+# TODO: instead, put a shim script which always uses `-platform offscreen`
 ENV PATH="$PATH:/opt/squashfs-root/bin"
 
 # Set application to run in headless mode. This doesn't actually seem to be respected since cmdline arg `-platform` is necessary, but whatever, I'll still set it, you can't stop me.
@@ -65,6 +69,9 @@ ENV QT_QPA_PLATFORM="offscreen"
 
 # Set locale correctly to hide warnings from Qt
 ENV LC_ALL=C.UTF-8 LANG=C.UTF-8
+
+# Verify running musescore CLI works
+RUN set -e && mscore4portable -platform offscreen --help
 
 # Run mscore4portable CLI. Requires arguments `-platform offscreen` to run in headless mode.
 ENTRYPOINT [ "mscore4portable", "-platform", "offscreen" ]
