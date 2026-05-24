@@ -17,10 +17,8 @@ ARG MUSESCORE_VERSION_DATE=260518142
 ARG MUSESCORE_DL_LINK=https://github.com/musescore/MuseScore/releases/download/v${MUSESCORE_VERSION}/MuseScore-Studio-${MUSESCORE_VERSION}.${MUSESCORE_VERSION_DATE}-\${ARCH}.AppImage
 # Shadow arg of same name to make it available within image
 ENV MUSESCORE_DL_LINK=${MUSESCORE_DL_LINK}
+RUN echo "TARGETARCH=${TARGETARCH} TARGETPLATFORM=${TARGETPLATFORM} TARGETOS=${TARGETOS}"
 RUN echo "${MUSESCORE_DL_LINK}"
-RUN echo "${TARGETARCH}"
-RUN echo "${TARGETPLATFORM}"
-RUN echo "${TARGETOS}"
 
 # Musescore Shared-Object package dependencies for running in the target environment
 ARG MUSESCORE_SO_DEPS="libopengl0 libasound2t64 libgl1 libegl1 libfontconfig1 libglib2.0-0t64 libharfbuzz0b libpipewire-0.3-0t64"
@@ -29,30 +27,35 @@ ENV MUSESCORE_SO_DEPS=${MUSESCORE_SO_DEPS}
 # install into opt directory
 WORKDIR /opt
 
+# Run a bunch of shell commands in a row, so that we minimize layer size by only saving a new layer after we clean up from a sizeable install process
+RUN <<EOF
 # apt-get update && apt-get install: Install necessary dependencies
+#   - gettext-base: necessary for envsubst below
 #   - wget, ca-certificates: web download utility and certificates for trusting external websites. only used for downloading AppImage, then removed
 #   - libopengl0 ...: general libraries necessary for MuseScore to function
-# wget: Download MuseScore AppImage
-# chmod: Make MuseScore AppImage executable it executable
-# ./musescore.appimage: Run AppImage, extract the contents to local file system (Docker images cannot natively run AppImage files)
-# apt-get remove && rm: Remove unnecessary leftovers
-RUN apt-get update && \
-    apt-get install gettext-base -y --no-install-suggests
-RUN case ${TARGETARCH} in \
-      amd64) export ARCH="x86_64" ;; \
-      arm64) export ARCH="aarch64" ;; \
-      *) echo "Unsupported arch: ${TARGETARCH}" && exit 1 ;; \
-    esac && \
-    export MUSESCORE_DL_LINK=$(echo "$MUSESCORE_DL_LINK" | envsubst) && \
-    echo "$MUSESCORE_DL_LINK" && \
-    apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-suggests wget ca-certificates ${MUSESCORE_SO_DEPS} && \
-    wget -qO musescore.appimage ${MUSESCORE_DL_LINK}
+apt-get update
+DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-suggests gettext-base wget ca-certificates ${MUSESCORE_SO_DEPS}
 
-RUN chmod +x musescore.appimage
-RUN ./musescore.appimage --appimage-extract && \
-    apt-get remove -y wget ca-certificates && \
-    rm musescore.appimage
+# determine exact MuseScore download link based on image architecture
+case ${TARGETARCH} in
+    amd64) export ARCH="x86_64" ;;
+    arm64) export ARCH="aarch64" ;;
+    *) echo "Unsupported arch: ${TARGETARCH}" && exit 1 ;;
+esac
+export MUSESCORE_DL_LINK=$(echo "$MUSESCORE_DL_LINK" | envsubst)
+echo "$MUSESCORE_DL_LINK"
+
+# download MuseScore AppImage
+wget -qO musescore.appimage ${MUSESCORE_DL_LINK}
+
+# make executable and run the AppImage to extract it, placing contents in /opt/squashfs-root
+chmod +x musescore.appimage
+./musescore.appimage --appimage-extract
+
+# clean up unnecessary leftovers
+apt-get remove -y wget ca-certificates gettext-base
+rm musescore.appimage
+EOF
 
 # Add install directory to path
 ENV PATH="$PATH:/opt/squashfs-root/bin"
