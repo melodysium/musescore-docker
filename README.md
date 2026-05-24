@@ -4,11 +4,12 @@ Docker image for running MuseScore headless CLI
 
 ## How to use
 
-Image is pushed to DockerHub at: 
+Image is pushed to DockerHub at: <https://hub.docker.com/repository/docker/melodysium/musescore>
 
 ## Build
 
 Override either `MUSESCORE_DL_LINK` or multiple preceding args with `--build-arg=<value>` in your `docker build` command.
+If you set the DL_LINK directly, be careful to pick the right architecture.
 
 ## Troubleshooting
 
