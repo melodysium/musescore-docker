@@ -30,3 +30,16 @@ Then:
 1.  Run `apt install -y <package-names...>` in the container.
 1.  Run `squashfs-root/bin/mscore4portable -platform offscreen --help` to verify the fix. If it doesn't fix it, go back and troubleshoot.
 1.  Add the necessary package(s) to the `MUSESCORE_SO_DEPS` argument and re-build
+
+### Cross-architecture build on MacOs
+
+I ran into difficulties building an `amd64` image on Mac M1 with Rosetta emulation.
+When running the `--appimage-extract` step, I would get `/bin/sh: 28: ./musescore.appimage: Exec format error`.
+I was able to get around this by using Colima with QEMU VM instead of Rosatta (at the cost of high build times).
+
+Try this setup if you're having similar issues:
+
+```sh
+colima start intel --arch amd64 --vm-type qemu
+docker build --platform linux/amd64 .
+```
