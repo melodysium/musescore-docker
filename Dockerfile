@@ -29,6 +29,7 @@ WORKDIR /opt
 
 # Run a bunch of shell commands in a row, so that we minimize layer size by only saving a new layer after we clean up from a sizeable install process
 RUN <<EOF
+set -e
 # apt-get update && apt-get install: Install necessary dependencies
 #   - gettext-base: necessary for envsubst below
 #   - wget, ca-certificates: web download utility and certificates for trusting external websites. only used for downloading AppImage, then removed
@@ -45,14 +46,16 @@ esac
 export MUSESCORE_DL_LINK=$(echo "$MUSESCORE_DL_LINK" | envsubst)
 echo "$MUSESCORE_DL_LINK"
 
-# download MuseScore AppImage
+# download MuseScore AppImage and make it executable
 wget -qO musescore.appimage ${MUSESCORE_DL_LINK}
-
-# make executable and run the AppImage to extract it, placing contents in /opt/squashfs-root
 chmod +x musescore.appimage
-#EOF
-#RUN <<EOF
-#set -e
+
+# uncomment these lines to save a build cache entry before running the MuseScore AppImage
+# EOF
+# RUN <<EOF
+# set -e
+
+# run the AppImage to extract it, placing contents in /opt/squashfs-root
 ./musescore.appimage --appimage-extract
 
 # clean up unnecessary leftovers
